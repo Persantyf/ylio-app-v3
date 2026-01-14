@@ -1,4 +1,13 @@
 import React, { useState } from 'react';
+import { 
+  guardarDatosSIPS, 
+  guardarConsumosBrutos, 
+  guardarConsumosProcesados,
+  guardarOferta,
+  cargarConsumosBrutos,
+  cargarOferta,
+  obtenerSiguienteOfertaId
+} from './supabaseServices';
 
 // ============================================
 // PALETA DE COLORES CORPORATIVOS YLIO
@@ -3833,6 +3842,16 @@ const Paso1Proyecto = ({ datos, onChange }) => {
       onChange(nuevosDatos);
       console.log('=== FIN CARGA SIPS ===');
       
+      // ====== GUARDAR EN SUPABASE ======
+      const ofertaId = datos.id_oferta || nuevosDatos.id_oferta;
+      if (ofertaId) {
+        console.log('💾 Guardando SIPS en Supabase...');
+        const resSips = await guardarDatosSIPS(ofertaId, nuevosDatos);
+        if (resSips.success) {
+          console.log('✅ Datos SIPS guardados en BD');
+        }
+      }
+      
     } catch (err) {
       console.error('Error procesando SIPS:', err);
       alert('Error procesando archivo SIPS: ' + err.message);
@@ -3946,6 +3965,17 @@ const Paso1Proyecto = ({ datos, onChange }) => {
         setFormatoDetectado(formato); // Guardar formato detectado
         setMostrarValidador(true);
         console.log('=== FIN CARGA ARCHIVO (ÉXITO) ===');
+        
+        // ====== GUARDAR BRUTOS EN SUPABASE ======
+        const ofertaId = datos.id_oferta;
+        if (ofertaId) {
+          console.log('💾 Guardando consumos brutos en Supabase...');
+          const resBrutos = await guardarConsumosBrutos(ofertaId, datosParseados);
+          if (resBrutos.success) {
+            console.log(`✅ ${resBrutos.count} consumos brutos guardados en BD`);
+          }
+        }
+        
       } catch (error) {
         console.error('=== ERROR CARGA ARCHIVO ===', error);
         alert('Error al procesar el archivo: ' + error.message + '\n\nFormatos soportados:\n• Curva de Carga (Date;Active)\n• Distribuidora (CUPS, Fecha, Hora, AE_kWh)\n• Formato YLIO (fecha;hora;consumo)');
@@ -3954,7 +3984,7 @@ const Paso1Proyecto = ({ datos, onChange }) => {
   };
 
   // Cuando el usuario acepta los datos del validador
-  const handleAceptarConsumo = (datosFinales) => {
+  const handleAceptarConsumo = async (datosFinales) => {
     // Ordenar cronológicamente antes de guardar
     const datosOrdenados = [...datosFinales].sort((a, b) => {
       const fechaA = a.fechaOriginal || a.fecha;
@@ -3970,12 +4000,11 @@ const Paso1Proyecto = ({ datos, onChange }) => {
     // Guardar datos brutos si no existen ya (solo la primera vez que se carga el archivo)
     const datosBrutos = datos.consumos_horarios_bruto || datosConsumoTemp;
     
-    onChange({
+    // Actualizar estado local
+    const nuevosDatos = {
       ...datos,
       archivo_consumo: archivoConsumoTemp,
-      // Datos brutos originales (para la base de datos "consumos_horarios_bruto")
       consumos_horarios_bruto: datosBrutos,
-      // Datos procesados/transformados (para la base de datos "oferta_consumos")
       consumos_horarios: datosOrdenados,
       consumos_estadisticas: {
         totalRegistros: datosOrdenados.length,
@@ -3985,8 +4014,32 @@ const Paso1Proyecto = ({ datos, onChange }) => {
         fechaFin,
         registrosBrutos: datosBrutos.length
       }
-    });
+    };
+    
+    onChange(nuevosDatos);
     setMostrarValidador(false);
+    
+    // ====== GUARDAR EN SUPABASE ======
+    const ofertaId = datos.id_oferta;
+    if (ofertaId) {
+      console.log('💾 Guardando consumos en Supabase...');
+      
+      // Guardar consumos brutos (si es la primera vez)
+      if (!datos.consumos_horarios_bruto) {
+        const resBrutos = await guardarConsumosBrutos(ofertaId, datosBrutos);
+        if (resBrutos.success) {
+          console.log(`✅ ${resBrutos.count} consumos brutos guardados en BD`);
+        }
+      }
+      
+      // Guardar consumos procesados (siempre sobrescribe)
+      const resProcesados = await guardarConsumosProcesados(ofertaId, datosOrdenados);
+      if (resProcesados.success) {
+        console.log(`✅ ${resProcesados.count} consumos procesados guardados en BD`);
+      }
+    } else {
+      console.warn('⚠️ No se puede guardar en BD: falta ID de oferta');
+    }
   };
 
   // Función para aplicar correcciones

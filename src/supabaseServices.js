@@ -5,10 +5,11 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-// Configuración Supabase (usar variables de entorno en producción)
-const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || 'TU_SUPABASE_URL';
-const supabaseKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'TU_SUPABASE_ANON_KEY';
+// Configuración Supabase (usando variables de entorno de Vite)
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+// Crear cliente de Supabase
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
 // ============================================
@@ -17,6 +18,7 @@ export const supabase = createClient(supabaseUrl, supabaseKey);
 export const guardarDatosSIPS = async (ofertaId, datosSIPS) => {
   try {
     const sipsData = {
+      oferta_id: ofertaId,
       cups: datosSIPS.sips_cups,
       distribuidora: datosSIPS.sips_distribuidora,
       comercializadora: datosSIPS.sips_comercializadora,
@@ -42,13 +44,14 @@ export const guardarDatosSIPS = async (ofertaId, datosSIPS) => {
       municipio: datosSIPS.ubicacion_municipio,
       provincia: datosSIPS.ubicacion_provincia,
       cnae: datosSIPS.cnae,
-      archivo_origen: datosSIPS.archivo_sips
+      archivo_origen: datosSIPS.archivo_sips,
+      datos_raw: datosSIPS
     };
 
-    const { data, error } = await supabase.rpc('guardar_sips', {
-      p_oferta_id: ofertaId,
-      p_sips_data: sipsData
-    });
+    const { data, error } = await supabase
+      .from('ofertas_sips')
+      .upsert(sipsData, { onConflict: 'oferta_id' })
+      .select();
 
     if (error) throw error;
     console.log('✅ Datos SIPS guardados correctamente');
@@ -64,8 +67,7 @@ export const guardarDatosSIPS = async (ofertaId, datosSIPS) => {
 // ============================================
 export const guardarConsumosBrutos = async (ofertaId, consumosBrutos) => {
   try {
-    // Preparar datos para envío (máximo 1000 registros por batch)
-    const batchSize = 1000;
+    const batchSize = 500;
     let totalInsertados = 0;
 
     // Primero eliminar los existentes
@@ -87,16 +89,15 @@ export const guardarConsumosBrutos = async (ofertaId, consumosBrutos) => {
         linea_original: c.lineaOriginal || null
       }));
 
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('ofertas_consumos_brutos')
         .insert(batch);
 
       if (error) throw error;
       totalInsertados += batch.length;
-      console.log(`📊 Insertados ${totalInsertados}/${consumosBrutos.length} consumos brutos`);
     }
 
-    console.log(`✅ ${totalInsertados} consumos brutos guardados correctamente`);
+    console.log(`✅ ${totalInsertados} consumos brutos guardados`);
     return { success: true, count: totalInsertados };
   } catch (error) {
     console.error('❌ Error guardando consumos brutos:', error);
@@ -105,11 +106,11 @@ export const guardarConsumosBrutos = async (ofertaId, consumosBrutos) => {
 };
 
 // ============================================
-// GUARDAR CONSUMOS PROCESADOS (8760 horas transformadas)
+// GUARDAR CONSUMOS PROCESADOS (8760 horas)
 // ============================================
 export const guardarConsumosProcesados = async (ofertaId, consumosProcesados) => {
   try {
-    const batchSize = 1000;
+    const batchSize = 500;
     let totalInsertados = 0;
 
     // Primero eliminar los existentes
@@ -129,18 +130,17 @@ export const guardarConsumosProcesados = async (ofertaId, consumosProcesados) =>
         consumo: c.consumo
       }));
 
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('ofertas_consumos_horarios')
         .insert(batch);
 
       if (error) throw error;
       totalInsertados += batch.length;
-      console.log(`📊 Insertados ${totalInsertados}/${consumosProcesados.length} consumos procesados`);
     }
 
     // Actualizar estadísticas en la tabla ofertas
     const consumoTotal = consumosProcesados.reduce((sum, c) => sum + c.consumo, 0);
-    const { error: updateError } = await supabase
+    await supabase
       .from('ofertas')
       .update({
         oferta_consumos: {
@@ -153,9 +153,7 @@ export const guardarConsumosProcesados = async (ofertaId, consumosProcesados) =>
       })
       .eq('oferta_id', ofertaId);
 
-    if (updateError) console.warn('⚠️ Error actualizando estadísticas:', updateError);
-
-    console.log(`✅ ${totalInsertados} consumos procesados guardados correctamente`);
+    console.log(`✅ ${totalInsertados} consumos procesados guardados`);
     return { success: true, count: totalInsertados };
   } catch (error) {
     console.error('❌ Error guardando consumos procesados:', error);
@@ -177,7 +175,6 @@ export const cargarConsumosBrutos = async (ofertaId) => {
 
     if (error) throw error;
 
-    // Transformar al formato de la app
     const consumos = data.map(c => ({
       fecha: c.fecha,
       hora: c.hora,
@@ -223,33 +220,11 @@ export const cargarConsumosProcesados = async (ofertaId) => {
 };
 
 // ============================================
-// CARGAR DATOS SIPS
+// GUARDAR OFERTA (datos generales)
 // ============================================
-export const cargarDatosSIPS = async (ofertaId) => {
-  try {
-    const { data, error } = await supabase
-      .from('ofertas_sips')
-      .select('*')
-      .eq('oferta_id', ofertaId)
-      .single();
-
-    if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows
-
-    console.log(`✅ Datos SIPS cargados`);
-    return { success: true, data };
-  } catch (error) {
-    console.error('❌ Error cargando SIPS:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-// ============================================
-// GUARDAR OFERTA COMPLETA (Paso 1)
-// ============================================
-export const guardarOfertaPaso1 = async (ofertaId, datos) => {
+export const guardarOferta = async (ofertaId, datos) => {
   try {
     const ofertaData = {
-      // Identificación
       oferta_id: ofertaId,
       oferta_denominacion: datos.denominacion_oferta,
       oferta_version: parseInt(datos.version) || 1,
@@ -257,13 +232,11 @@ export const guardarOfertaPaso1 = async (ofertaId, datos) => {
       oferta_fecha_solicitud: datos.fecha_solicitud || null,
       oferta_fecha_inicio: datos.fecha_inicio || null,
       
-      // Cliente
       cliente_denominacion: datos.cliente_denominacion,
       cliente_razon_social: datos.cliente_nombre,
       cliente_cif: datos.cliente_cif,
       cliente_cnae: datos.cnae,
       
-      // Ubicación
       proyecto_direccion: datos.ubicacion_direccion,
       proyecto_cp: datos.ubicacion_cp,
       proyecto_municipio: datos.ubicacion_municipio,
@@ -276,12 +249,10 @@ export const guardarOfertaPaso1 = async (ofertaId, datos) => {
       proyecto_huso: datos.huso ? parseInt(datos.huso) : null,
       proyecto_referencia_catastral: datos.referencia_catastral,
       
-      // Archivos
       archivo_sips: datos.archivo_sips,
       fuente_datos_consumo: datos.fuente_consumo,
       archivo_consumo: datos.archivo_consumo,
       
-      // Datos SIPS (resumen)
       sips_cups: datos.sips_cups,
       sips_distribuidora: datos.sips_distribuidora,
       sips_tarifa: datos.sips_tarifa,
@@ -292,32 +263,16 @@ export const guardarOfertaPaso1 = async (ofertaId, datos) => {
       sips_potencia_p4: datos.sips_potencia_p4,
       sips_potencia_p5: datos.sips_potencia_p5,
       sips_potencia_p6: datos.sips_potencia_p6,
-      sips_consumo_anual: datos.sips_consumo_anual,
-      
-      // Estadísticas consumo
-      oferta_consumos: datos.consumos_estadisticas ? {
-        total: parseFloat(datos.consumos_estadisticas.consumoTotal),
-        media: parseFloat(datos.consumos_estadisticas.consumoMedia),
-        registros: datos.consumos_estadisticas.totalRegistros
-      } : null,
-      
-      // Estadísticas brutos
-      consumos_brutos_estadisticas: datos.consumos_horarios_bruto ? {
-        totalRegistros: datos.consumos_horarios_bruto.length,
-        fechaInicio: datos.consumos_horarios_bruto[0]?.fecha,
-        fechaFin: datos.consumos_horarios_bruto[datos.consumos_horarios_bruto.length - 1]?.fecha
-      } : null
+      sips_consumo_anual: datos.sips_consumo_anual
     };
 
-    // Upsert de la oferta
     const { data, error } = await supabase
       .from('ofertas')
       .upsert(ofertaData, { onConflict: 'oferta_id' })
       .select();
 
     if (error) throw error;
-
-    console.log('✅ Oferta Paso 1 guardada correctamente');
+    console.log('✅ Oferta guardada correctamente');
     return { success: true, data };
   } catch (error) {
     console.error('❌ Error guardando oferta:', error);
@@ -326,55 +281,50 @@ export const guardarOfertaPaso1 = async (ofertaId, datos) => {
 };
 
 // ============================================
-// FUNCIÓN PRINCIPAL: GUARDAR TODO PASO 1
+// CARGAR OFERTA COMPLETA
 // ============================================
-export const guardarTodoPaso1 = async (ofertaId, datos) => {
-  const resultados = {
-    oferta: null,
-    sips: null,
-    consumosBrutos: null,
-    consumosProcesados: null
-  };
-
+export const cargarOferta = async (ofertaId) => {
   try {
-    // 1. Guardar oferta principal
-    resultados.oferta = await guardarOfertaPaso1(ofertaId, datos);
-    if (!resultados.oferta.success) throw new Error('Error guardando oferta');
+    const { data, error } = await supabase
+      .from('ofertas')
+      .select('*')
+      .eq('oferta_id', ofertaId)
+      .single();
 
-    // 2. Guardar datos SIPS si existen
-    if (datos.archivo_sips && datos.sips_cups) {
-      resultados.sips = await guardarDatosSIPS(ofertaId, datos);
-    }
-
-    // 3. Guardar consumos brutos si existen
-    if (datos.consumos_horarios_bruto && datos.consumos_horarios_bruto.length > 0) {
-      resultados.consumosBrutos = await guardarConsumosBrutos(ofertaId, datos.consumos_horarios_bruto);
-    }
-
-    // 4. Guardar consumos procesados si existen
-    if (datos.consumos_horarios && datos.consumos_horarios.length > 0) {
-      resultados.consumosProcesados = await guardarConsumosProcesados(ofertaId, datos.consumos_horarios);
-    }
-
-    console.log('✅ Paso 1 guardado completamente:', resultados);
-    return { success: true, resultados };
+    if (error) throw error;
+    console.log('✅ Oferta cargada');
+    return { success: true, data };
   } catch (error) {
-    console.error('❌ Error en guardarTodoPaso1:', error);
-    return { success: false, error: error.message, resultados };
+    console.error('❌ Error cargando oferta:', error);
+    return { success: false, error: error.message };
   }
 };
 
 // ============================================
-// EXPORTAR TODAS LAS FUNCIONES
+// OBTENER SIGUIENTE ID DE OFERTA
 // ============================================
-export default {
-  supabase,
-  guardarDatosSIPS,
-  guardarConsumosBrutos,
-  guardarConsumosProcesados,
-  cargarConsumosBrutos,
-  cargarConsumosProcesados,
-  cargarDatosSIPS,
-  guardarOfertaPaso1,
-  guardarTodoPaso1
+export const obtenerSiguienteOfertaId = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('ofertas')
+      .select('oferta_id')
+      .order('oferta_id', { ascending: false })
+      .limit(1);
+
+    if (error) throw error;
+
+    let siguienteNum = 1;
+    if (data && data.length > 0) {
+      const ultimoId = data[0].oferta_id;
+      const num = parseInt(ultimoId.substring(2));
+      siguienteNum = num + 1;
+    }
+
+    const nuevoId = '10' + String(siguienteNum).padStart(3, '0');
+    console.log('✅ Siguiente ID:', nuevoId);
+    return { success: true, id: nuevoId };
+  } catch (error) {
+    console.error('❌ Error obteniendo siguiente ID:', error);
+    return { success: false, error: error.message };
+  }
 };
