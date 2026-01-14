@@ -1,331 +1,4 @@
-import React, { useState, useEffect } from 'react';
-
-// ============================================
-// CONFIGURACIÓN SUPABASE
-// ============================================
-const SUPABASE_URL = 'https://edhyacacepvfvjuwfzrp.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVkaHlhY2FjZXB2ZnZqdXdmenJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzNzU4MTUsImV4cCI6MjA4Mzk1MTgxNX0.9M1Cs9OZi5FIzSKuzw5nT3H2Dq8PCoG1g2Xy6rlhQm0';
-
-const supabaseHeaders = {
-  'apikey': SUPABASE_KEY,
-  'Authorization': `Bearer ${SUPABASE_KEY}`,
-  'Content-Type': 'application/json',
-  'Prefer': 'return=representation'
-};
-
-// ============================================
-// FUNCIONES DE MAPEO APP <-> BASE DE DATOS
-// ============================================
-
-// Mapea los nombres de variables de la App a los de la BD
-const mapearAppToBD = (datosApp) => {
-  return {
-    // Identificación
-    oferta_id: datosApp.id_oferta || null,
-    oferta_denominacion: datosApp.denominacion_oferta || null,
-    oferta_version: datosApp.version ? parseInt(datosApp.version) : 1,
-    oferta_descripcion_version: datosApp.descripcion_version || null,
-    oferta_fecha_solicitud: datosApp.fecha_solicitud || null,
-    oferta_fecha_inicio: datosApp.fecha_inicio || null,
-    
-    // Cliente
-    cliente_denominacion: datosApp.cliente_denominacion || null,
-    cliente_razon_social: datosApp.cliente_nombre || null,
-    cliente_cif: datosApp.cliente_cif || null,
-    cliente_cnae: datosApp.cnae || null,
-    
-    // Ubicación/Proyecto
-    proyecto_direccion: datosApp.ubicacion_direccion || null,
-    proyecto_cp: datosApp.ubicacion_cp || null,
-    proyecto_municipio: datosApp.ubicacion_municipio || null,
-    proyecto_provincia: datosApp.ubicacion_provincia || null,
-    proyecto_comunidad: datosApp.ubicacion_comunidad || null,
-    proyecto_latitud: datosApp.ubicacion_latitud ? parseFloat(datosApp.ubicacion_latitud) : null,
-    proyecto_longitud: datosApp.ubicacion_longitud ? parseFloat(datosApp.ubicacion_longitud) : null,
-    proyecto_coordenada_x: datosApp.coordenada_x ? parseInt(datosApp.coordenada_x) : null,
-    proyecto_coordenada_y: datosApp.coordenada_y ? parseInt(datosApp.coordenada_y) : null,
-    proyecto_huso: datosApp.huso ? parseInt(datosApp.huso) : null,
-    proyecto_referencia_catastral: datosApp.referencia_catastral || null,
-    
-    // SIPS
-    sips_cups: datosApp.sips_cups || null,
-    sips_distribuidora: datosApp.sips_distribuidora || null,
-    sips_tarifa: datosApp.sips_tarifa || null,
-    sips_tension: datosApp.sips_tension || null,
-    sips_potencia_max_bie: datosApp.sips_potencia_max_bie ? parseFloat(datosApp.sips_potencia_max_bie) : null,
-    sips_derechos_extension: datosApp.sips_derechos_extension ? parseFloat(datosApp.sips_derechos_extension) : null,
-    sips_derechos_acceso: datosApp.sips_derechos_acceso ? parseFloat(datosApp.sips_derechos_acceso) : null,
-    sips_potencia_p1: datosApp.sips_potencia_p1 ? parseFloat(datosApp.sips_potencia_p1) : null,
-    sips_potencia_p2: datosApp.sips_potencia_p2 ? parseFloat(datosApp.sips_potencia_p2) : null,
-    sips_potencia_p3: datosApp.sips_potencia_p3 ? parseFloat(datosApp.sips_potencia_p3) : null,
-    sips_potencia_p4: datosApp.sips_potencia_p4 ? parseFloat(datosApp.sips_potencia_p4) : null,
-    sips_potencia_p5: datosApp.sips_potencia_p5 ? parseFloat(datosApp.sips_potencia_p5) : null,
-    sips_potencia_p6: datosApp.sips_potencia_p6 ? parseFloat(datosApp.sips_potencia_p6) : null,
-    sips_consumo_anual: datosApp.sips_consumo_anual ? parseInt(datosApp.sips_consumo_anual) : null,
-    sips_consumo_p1: datosApp.sips_consumo_p1 ? parseFloat(datosApp.sips_consumo_p1) : null,
-    sips_consumo_p2: datosApp.sips_consumo_p2 ? parseFloat(datosApp.sips_consumo_p2) : null,
-    sips_consumo_p3: datosApp.sips_consumo_p3 ? parseFloat(datosApp.sips_consumo_p3) : null,
-    sips_consumo_p4: datosApp.sips_consumo_p4 ? parseFloat(datosApp.sips_consumo_p4) : null,
-    sips_consumo_p5: datosApp.sips_consumo_p5 ? parseFloat(datosApp.sips_consumo_p5) : null,
-    sips_consumo_p6: datosApp.sips_consumo_p6 ? parseFloat(datosApp.sips_consumo_p6) : null,
-    
-    // Archivos
-    archivo_sips: datosApp.archivo_sips || null,
-    archivo_consumo: datosApp.archivo_consumo || null,
-    fuente_datos_consumo: datosApp.fuente_datos_consumo || null,
-    
-    // Paso 2 - Tarifa
-    cups: datosApp.cups || null,
-    tarifa_acceso: datosApp.tarifa_acceso || null,
-    distribuidora: datosApp.distribuidora || null,
-    comercializadora: datosApp.comercializadora || null,
-    tension: datosApp.tension || null,
-    potencia_max_bie: datosApp.potencia_max_bie ? parseFloat(datosApp.potencia_max_bie) : null,
-    derechos_extension: datosApp.derechos_extension ? parseFloat(datosApp.derechos_extension) : null,
-    derechos_acceso: datosApp.derechos_acceso ? parseFloat(datosApp.derechos_acceso) : null,
-    potencia_p1: datosApp.potencia_p1 ? parseFloat(datosApp.potencia_p1) : null,
-    potencia_p2: datosApp.potencia_p2 ? parseFloat(datosApp.potencia_p2) : null,
-    potencia_p3: datosApp.potencia_p3 ? parseFloat(datosApp.potencia_p3) : null,
-    potencia_p4: datosApp.potencia_p4 ? parseFloat(datosApp.potencia_p4) : null,
-    potencia_p5: datosApp.potencia_p5 ? parseFloat(datosApp.potencia_p5) : null,
-    potencia_p6: datosApp.potencia_p6 ? parseFloat(datosApp.potencia_p6) : null,
-    tipo_precios_potencia: datosApp.tipo_precios_potencia || null,
-    precio_potencia_p1: datosApp.precio_potencia_p1 ? parseFloat(datosApp.precio_potencia_p1) : null,
-    precio_potencia_p2: datosApp.precio_potencia_p2 ? parseFloat(datosApp.precio_potencia_p2) : null,
-    precio_potencia_p3: datosApp.precio_potencia_p3 ? parseFloat(datosApp.precio_potencia_p3) : null,
-    precio_potencia_p4: datosApp.precio_potencia_p4 ? parseFloat(datosApp.precio_potencia_p4) : null,
-    precio_potencia_p5: datosApp.precio_potencia_p5 ? parseFloat(datosApp.precio_potencia_p5) : null,
-    precio_potencia_p6: datosApp.precio_potencia_p6 ? parseFloat(datosApp.precio_potencia_p6) : null,
-    tipo_precios_energia: datosApp.tipo_precios_energia || null,
-    precio_energia_p1: datosApp.precio_energia_p1 ? parseFloat(datosApp.precio_energia_p1) : null,
-    precio_energia_p2: datosApp.precio_energia_p2 ? parseFloat(datosApp.precio_energia_p2) : null,
-    precio_energia_p3: datosApp.precio_energia_p3 ? parseFloat(datosApp.precio_energia_p3) : null,
-    precio_energia_p4: datosApp.precio_energia_p4 ? parseFloat(datosApp.precio_energia_p4) : null,
-    precio_energia_p5: datosApp.precio_energia_p5 ? parseFloat(datosApp.precio_energia_p5) : null,
-    precio_energia_p6: datosApp.precio_energia_p6 ? parseFloat(datosApp.precio_energia_p6) : null,
-    bonificacion_iee: datosApp.bonificacion_iee ? parseInt(datosApp.bonificacion_iee) : null,
-    coste_alquiler_contador: datosApp.coste_alquiler_contador ? parseFloat(datosApp.coste_alquiler_contador) : null,
-    
-    // Paso 3 - Situación Actual
-    fv_existente: datosApp.fv_existente || null,
-    fv_existente_modalidad_autoconsumo: datosApp.modalidad_autoconsumo || null,
-    fv_existente_potencia_max_vertido: datosApp.potencia_max_vertido ? parseFloat(datosApp.potencia_max_vertido) : null,
-    almac_existente: datosApp.almacenamiento_existente || null,
-    fv_existente_potencia_pico: datosApp.fv_potencia_pico_manual ? parseFloat(datosApp.fv_potencia_pico_manual) : null,
-    fv_existente_potencia_nominal: datosApp.fv_potencia_nominal_manual ? parseFloat(datosApp.fv_potencia_nominal_manual) : null,
-    fv_existente_archivo_produccion_real: datosApp.archivo_produccion_real || null,
-    fv_existente_archivo_produccion_simulado: datosApp.archivo_produccion_simulado || null,
-    fv_existente_produccion_anual_real: datosApp.fv_produccion_anual ? parseFloat(datosApp.fv_produccion_anual) : null,
-    fv_existente_produccion_real_estadisticas: datosApp.produccion_real_estadisticas || null,
-    fv_existente_produccion_simulada_estadisticas: datosApp.produccion_simulada_estadisticas || null,
-    almac_existente_capacidad: datosApp.bateria_capacidad ? parseFloat(datosApp.bateria_capacidad) : null,
-    almac_existente_potencia: datosApp.bateria_potencia ? parseFloat(datosApp.bateria_potencia) : null,
-    
-    // Paso 4 - Propuesta
-    oferta_fv: datosApp.prop_incluir_fv === 'si' || datosApp.prop_incluir_fv === true,
-    oferta_bateria: datosApp.prop_incluir_bateria === 'si' || datosApp.prop_incluir_bateria === true,
-    base_oferta_potencia_pico: datosApp.prop_potencia_pico_manual ? parseFloat(datosApp.prop_potencia_pico_manual) : null,
-    base_oferta_potencia_nominal: datosApp.prop_potencia_nominal_manual ? parseFloat(datosApp.prop_potencia_nominal_manual) : null,
-  };
-};
-
-// Mapea los nombres de la BD a los de la App
-const mapearBDToApp = (datosBD) => {
-  return {
-    // Identificación
-    id_oferta: datosBD.oferta_id || '',
-    denominacion_oferta: datosBD.oferta_denominacion || '',
-    version: datosBD.oferta_version?.toString() || '1',
-    descripcion_version: datosBD.oferta_descripcion_version || '',
-    fecha_solicitud: datosBD.oferta_fecha_solicitud || '',
-    fecha_inicio: datosBD.oferta_fecha_inicio || '',
-    
-    // Cliente
-    cliente_denominacion: datosBD.cliente_denominacion || '',
-    cliente_nombre: datosBD.cliente_razon_social || '',
-    cliente_cif: datosBD.cliente_cif || '',
-    cnae: datosBD.cliente_cnae || '',
-    
-    // Ubicación
-    ubicacion_direccion: datosBD.proyecto_direccion || '',
-    ubicacion_cp: datosBD.proyecto_cp || '',
-    ubicacion_municipio: datosBD.proyecto_municipio || '',
-    ubicacion_provincia: datosBD.proyecto_provincia || '',
-    ubicacion_comunidad: datosBD.proyecto_comunidad || '',
-    ubicacion_latitud: datosBD.proyecto_latitud?.toString() || '',
-    ubicacion_longitud: datosBD.proyecto_longitud?.toString() || '',
-    coordenada_x: datosBD.proyecto_coordenada_x?.toString() || '',
-    coordenada_y: datosBD.proyecto_coordenada_y?.toString() || '',
-    huso: datosBD.proyecto_huso?.toString() || '',
-    referencia_catastral: datosBD.proyecto_referencia_catastral || '',
-    
-    // SIPS
-    sips_cups: datosBD.sips_cups || '',
-    sips_distribuidora: datosBD.sips_distribuidora || '',
-    sips_tarifa: datosBD.sips_tarifa || '',
-    sips_tension: datosBD.sips_tension || '',
-    sips_potencia_max_bie: datosBD.sips_potencia_max_bie?.toString() || '',
-    sips_derechos_extension: datosBD.sips_derechos_extension?.toString() || '',
-    sips_derechos_acceso: datosBD.sips_derechos_acceso?.toString() || '',
-    sips_potencia_p1: datosBD.sips_potencia_p1?.toString() || '',
-    sips_potencia_p2: datosBD.sips_potencia_p2?.toString() || '',
-    sips_potencia_p3: datosBD.sips_potencia_p3?.toString() || '',
-    sips_potencia_p4: datosBD.sips_potencia_p4?.toString() || '',
-    sips_potencia_p5: datosBD.sips_potencia_p5?.toString() || '',
-    sips_potencia_p6: datosBD.sips_potencia_p6?.toString() || '',
-    sips_consumo_anual: datosBD.sips_consumo_anual?.toString() || '',
-    sips_consumo_p1: datosBD.sips_consumo_p1?.toString() || '',
-    sips_consumo_p2: datosBD.sips_consumo_p2?.toString() || '',
-    sips_consumo_p3: datosBD.sips_consumo_p3?.toString() || '',
-    sips_consumo_p4: datosBD.sips_consumo_p4?.toString() || '',
-    sips_consumo_p5: datosBD.sips_consumo_p5?.toString() || '',
-    sips_consumo_p6: datosBD.sips_consumo_p6?.toString() || '',
-    
-    // Archivos
-    archivo_sips: datosBD.archivo_sips || '',
-    archivo_consumo: datosBD.archivo_consumo || '',
-    fuente_datos_consumo: datosBD.fuente_datos_consumo || '',
-    
-    // Paso 2
-    cups: datosBD.cups || '',
-    tarifa_acceso: datosBD.tarifa_acceso || '',
-    distribuidora: datosBD.distribuidora || '',
-    comercializadora: datosBD.comercializadora || '',
-    tension: datosBD.tension || '',
-    potencia_max_bie: datosBD.potencia_max_bie?.toString() || '',
-    derechos_extension: datosBD.derechos_extension?.toString() || '',
-    derechos_acceso: datosBD.derechos_acceso?.toString() || '',
-    potencia_p1: datosBD.potencia_p1?.toString() || '',
-    potencia_p2: datosBD.potencia_p2?.toString() || '',
-    potencia_p3: datosBD.potencia_p3?.toString() || '',
-    potencia_p4: datosBD.potencia_p4?.toString() || '',
-    potencia_p5: datosBD.potencia_p5?.toString() || '',
-    potencia_p6: datosBD.potencia_p6?.toString() || '',
-    tipo_precios_potencia: datosBD.tipo_precios_potencia || '',
-    precio_potencia_p1: datosBD.precio_potencia_p1?.toString() || '',
-    precio_potencia_p2: datosBD.precio_potencia_p2?.toString() || '',
-    precio_potencia_p3: datosBD.precio_potencia_p3?.toString() || '',
-    precio_potencia_p4: datosBD.precio_potencia_p4?.toString() || '',
-    precio_potencia_p5: datosBD.precio_potencia_p5?.toString() || '',
-    precio_potencia_p6: datosBD.precio_potencia_p6?.toString() || '',
-    tipo_precios_energia: datosBD.tipo_precios_energia || '',
-    precio_energia_p1: datosBD.precio_energia_p1?.toString() || '',
-    precio_energia_p2: datosBD.precio_energia_p2?.toString() || '',
-    precio_energia_p3: datosBD.precio_energia_p3?.toString() || '',
-    precio_energia_p4: datosBD.precio_energia_p4?.toString() || '',
-    precio_energia_p5: datosBD.precio_energia_p5?.toString() || '',
-    precio_energia_p6: datosBD.precio_energia_p6?.toString() || '',
-    bonificacion_iee: datosBD.bonificacion_iee?.toString() || '',
-    coste_alquiler_contador: datosBD.coste_alquiler_contador?.toString() || '',
-    
-    // Paso 3
-    fv_existente: datosBD.fv_existente || '',
-    modalidad_autoconsumo: datosBD.fv_existente_modalidad_autoconsumo || '',
-    potencia_max_vertido: datosBD.fv_existente_potencia_max_vertido?.toString() || '',
-    almacenamiento_existente: datosBD.almac_existente || '',
-    fv_potencia_pico_manual: datosBD.fv_existente_potencia_pico?.toString() || '',
-    fv_potencia_nominal_manual: datosBD.fv_existente_potencia_nominal?.toString() || '',
-    archivo_produccion_real: datosBD.fv_existente_archivo_produccion_real || '',
-    archivo_produccion_simulado: datosBD.fv_existente_archivo_produccion_simulado || '',
-    fv_produccion_anual: datosBD.fv_existente_produccion_anual_real?.toString() || '',
-    produccion_real_estadisticas: datosBD.fv_existente_produccion_real_estadisticas || null,
-    produccion_simulada_estadisticas: datosBD.fv_existente_produccion_simulada_estadisticas || null,
-    bateria_capacidad: datosBD.almac_existente_capacidad?.toString() || '',
-    bateria_potencia: datosBD.almac_existente_potencia?.toString() || '',
-    
-    // Paso 4
-    prop_incluir_fv: datosBD.oferta_fv ? 'si' : 'no',
-    prop_incluir_bateria: datosBD.oferta_bateria ? 'si' : 'no',
-    prop_potencia_pico_manual: datosBD.base_oferta_potencia_pico?.toString() || '',
-    prop_potencia_nominal_manual: datosBD.base_oferta_potencia_nominal?.toString() || '',
-  };
-};
-
-// ============================================
-// FUNCIONES API SUPABASE
-// ============================================
-
-const cargarOfertasSupabase = async () => {
-  try {
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/ofertas?select=oferta_id,oferta_denominacion,cliente_denominacion,proyecto_municipio,fecha_creacion,fecha_modificacion&order=fecha_modificacion.desc&limit=50`,
-      { headers: supabaseHeaders }
-    );
-    if (!res.ok) throw new Error('Error cargando ofertas');
-    const data = await res.json();
-    return data || [];
-  } catch (err) {
-    console.error('Error cargando ofertas de Supabase:', err);
-    return [];
-  }
-};
-
-const cargarOfertaSupabase = async (ofertaId) => {
-  try {
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/ofertas?oferta_id=eq.${ofertaId}`,
-      { headers: supabaseHeaders }
-    );
-    if (!res.ok) throw new Error('Error cargando oferta');
-    const data = await res.json();
-    return data && data[0] ? data[0] : null;
-  } catch (err) {
-    console.error('Error cargando oferta de Supabase:', err);
-    return null;
-  }
-};
-
-const guardarOfertaSupabase = async (datosApp) => {
-  try {
-    const datosBD = mapearAppToBD(datosApp);
-    
-    // Verificar si existe
-    const existe = await cargarOfertaSupabase(datosBD.oferta_id);
-    
-    if (existe) {
-      // UPDATE
-      const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/ofertas?oferta_id=eq.${datosBD.oferta_id}`,
-        {
-          method: 'PATCH',
-          headers: supabaseHeaders,
-          body: JSON.stringify(datosBD)
-        }
-      );
-      if (!res.ok) throw new Error('Error actualizando oferta');
-    } else {
-      // INSERT
-      const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/ofertas`,
-        {
-          method: 'POST',
-          headers: supabaseHeaders,
-          body: JSON.stringify(datosBD)
-        }
-      );
-      if (!res.ok) throw new Error('Error creando oferta');
-    }
-    
-    return true;
-  } catch (err) {
-    console.error('Error guardando en Supabase:', err);
-    return false;
-  }
-};
-
-const obtenerSiguienteIdOferta = async () => {
-  try {
-    const ofertas = await cargarOfertasSupabase();
-    const maxNum = ofertas.reduce((max, o) => {
-      const num = parseInt(o.oferta_id?.substring(2)) || 0;
-      return Math.max(max, num);
-    }, 0);
-    return '10' + String(maxNum + 1).padStart(3, '0');
-  } catch (err) {
-    console.error('Error generando ID:', err);
-    return '10001';
-  }
-};
+import React, { useState } from 'react';
 
 // ============================================
 // PALETA DE COLORES CORPORATIVOS YLIO
@@ -384,7 +57,8 @@ const exportarCSV = (datos, nombreArchivo = 'consumos_horarios.csv') => {
   });
   
   const cabecera = 'fecha;hora;demanda\n';
-  const filas = datosOrdenados.map(d => `${formatearFecha(d.fecha)};${d.hora};${d.consumo.toFixed(4)}`).join('\n');
+  // Usar coma como separador decimal para compatibilidad con Excel español
+  const filas = datosOrdenados.map(d => `${formatearFecha(d.fecha)};${d.hora};${d.consumo.toFixed(4).replace('.', ',')}`).join('\n');
   const contenido = cabecera + filas;
   
   const blob = new Blob([contenido], { type: 'text/csv;charset=utf-8;' });
@@ -1942,102 +1616,113 @@ const ValidadorConsumos = ({ archivo, datosOriginales, errores, estadisticas, re
               </div>
               
               {tieneMultiplesAnos && (
-                <p style={{ fontSize: '12px', color: '#1565C0', marginBottom: '12px' }}>Selecciona qué año usar para cada mes. Por defecto se usa el más reciente disponible.</p>
+                <p style={{ fontSize: '12px', color: '#1565C0', marginBottom: '12px' }}>Selecciona qué año usar para cada mes. Haz clic en una celda para seleccionar ese año para ese mes.</p>
               )}
               
-              {/* Grid de meses */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '8px' }}>
-                {resumenMeses.map((mes, index) => {
-                  const seleccionActual = seleccionMeses[index];
-                  const opcionActual = mes.opciones.find(o => o.año === seleccionActual);
-                  const tieneVariosAnos = mes.opciones.length > 1;
-                  const tieneDatos = mes.opciones.length > 0;
-                  
-                  return (
-                    <div key={mes.mes} style={{ 
-                      backgroundColor: tieneDatos ? 'white' : '#FFEBEE', 
-                      borderRadius: '8px', 
-                      padding: '10px', 
-                      border: !tieneDatos ? '2px solid #FFCDD2' : (tieneVariosAnos ? '2px solid #4CAF50' : '1px solid #E0E0E0'),
-                      opacity: 1
-                    }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                        <span style={{ fontSize: '11px', fontWeight: '600', color: tieneDatos ? (tieneMultiplesAnos ? '#1565C0' : COLOR_TEXT) : '#C62828' }}>{mes.nombre}</span>
-                        {tieneVariosAnos && <span style={{ fontSize: '9px', backgroundColor: '#4CAF50', color: 'white', padding: '1px 4px', borderRadius: '3px' }}>{mes.opciones.length} años</span>}
-                      </div>
-                      {tieneMultiplesAnos ? (
-                        <select 
-                          value={seleccionActual || ''} 
-                          onChange={(e) => handleCambiarMes(index, e.target.value)}
-                          disabled={!opcionesCorreccion.construirAnoCompleto}
-                          style={{ 
-                            width: '100%', 
-                            padding: '4px', 
-                            fontSize: '11px', 
-                            border: '1px solid #DEE2E6', 
-                            borderRadius: '4px', 
-                            backgroundColor: opcionesCorreccion.construirAnoCompleto ? 'white' : '#F5F5F5',
-                            cursor: opcionesCorreccion.construirAnoCompleto ? 'pointer' : 'not-allowed'
-                          }}
-                        >
-                          {mes.opciones.length === 0 ? (
-                            <option value="">Sin datos</option>
-                          ) : (
-                            mes.opciones.map(op => (
-                              <option key={op.año} value={op.año}>
-                                {op.año} - {op.registros}h ({parseFloat(op.consumoTotal).toLocaleString()} kW)
-                              </option>
-                            ))
-                          )}
-                        </select>
-                      ) : (
-                        /* Vista simplificada para un solo año */
-                        <div style={{ 
-                          padding: '4px 6px', 
-                          fontSize: '11px', 
-                          backgroundColor: tieneDatos ? '#E8F5E9' : '#FFEBEE',
-                          borderRadius: '4px',
-                          textAlign: 'center',
-                          color: tieneDatos ? '#2E7D32' : '#C62828'
-                        }}>
-                          {tieneDatos 
-                            ? `${opcionActual?.año || ''} - ${opcionActual?.registros || 0}h`
-                            : 'Sin datos'
-                          }
-                        </div>
-                      )}
-                      {/* Info del mes */}
-                      {opcionActual && (
-                        <div style={{ fontSize: '9px', color: COLOR_TEXT_LIGHT, marginTop: '4px', textAlign: 'center' }}>
-                          {parseFloat(opcionActual.consumoTotal).toLocaleString()} kWh
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+              {/* TABLA MES/AÑO */}
+              {(() => {
+                const añosDisponibles = estadisticas.añosDisponibles || [];
+                const mesesNombresCortos = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+                
+                return (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', backgroundColor: 'white', borderRadius: '8px', overflow: 'hidden' }}>
+                      <thead>
+                        <tr style={{ backgroundColor: '#E3F2FD' }}>
+                          <th style={{ padding: '10px 8px', textAlign: 'left', fontWeight: '600', color: '#1565C0', borderBottom: '2px solid #90CAF9' }}>Año / Mes</th>
+                          {mesesNombresCortos.map((mes, i) => (
+                            <th key={i} style={{ padding: '10px 6px', textAlign: 'center', fontWeight: '600', color: '#1565C0', borderBottom: '2px solid #90CAF9', minWidth: '55px' }}>{mes}</th>
+                          ))}
+                          <th style={{ padding: '10px 8px', textAlign: 'center', fontWeight: '600', color: '#1565C0', borderBottom: '2px solid #90CAF9' }}>Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {añosDisponibles.map((año, añoIdx) => {
+                          let totalAño = 0;
+                          return (
+                            <tr key={año} style={{ borderBottom: '1px solid #E0E0E0' }}>
+                              <td style={{ padding: '8px', fontWeight: '600', color: COLOR_TEXT, backgroundColor: '#FAFAFA' }}>{año}</td>
+                              {resumenMeses.map((mes, mesIdx) => {
+                                const opcion = mes.opciones.find(o => o.año === año);
+                                const estaSeleccionado = seleccionMeses[mesIdx] === año;
+                                const tieneDatos = !!opcion;
+                                if (opcion) totalAño += opcion.consumoTotal;
+                                
+                                return (
+                                  <td 
+                                    key={mesIdx} 
+                                    onClick={() => {
+                                      if (tieneDatos && (opcionesCorreccion.construirAnoCompleto || tieneMultiplesAnos)) {
+                                        handleCambiarMes(mesIdx, año);
+                                      }
+                                    }}
+                                    style={{ 
+                                      padding: '6px 4px', 
+                                      textAlign: 'center',
+                                      backgroundColor: estaSeleccionado ? '#C8E6C9' : (tieneDatos ? '#F5F5F5' : '#FFEBEE'),
+                                      border: estaSeleccionado ? '2px solid #4CAF50' : '1px solid #E0E0E0',
+                                      cursor: tieneDatos && (opcionesCorreccion.construirAnoCompleto || tieneMultiplesAnos) ? 'pointer' : 'default',
+                                      transition: 'all 0.2s'
+                                    }}
+                                  >
+                                    {tieneDatos ? (
+                                      <div>
+                                        <div style={{ fontWeight: estaSeleccionado ? '700' : '500', color: estaSeleccionado ? '#2E7D32' : COLOR_TEXT }}>
+                                          {opcion.registros}h
+                                        </div>
+                                        <div style={{ fontSize: '9px', color: estaSeleccionado ? '#388E3C' : COLOR_TEXT_LIGHT }}>
+                                          {(opcion.consumoTotal / 1000).toFixed(1)}k
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <span style={{ color: '#BDBDBD', fontSize: '10px' }}>-</span>
+                                    )}
+                                  </td>
+                                );
+                              })}
+                              <td style={{ padding: '8px', textAlign: 'center', fontWeight: '600', backgroundColor: '#FAFAFA', color: COLOR_TEXT }}>
+                                {totalAño > 0 ? `${(totalAño / 1000).toFixed(0)}k` : '-'}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        {/* Fila de selección actual */}
+                        <tr style={{ backgroundColor: '#E8F5E9', borderTop: '2px solid #4CAF50' }}>
+                          <td style={{ padding: '8px', fontWeight: '700', color: '#2E7D32' }}>✓ Selección</td>
+                          {resumenMeses.map((mes, mesIdx) => {
+                            const añoSel = seleccionMeses[mesIdx];
+                            const opcion = mes.opciones.find(o => o.año === añoSel);
+                            return (
+                              <td key={mesIdx} style={{ padding: '6px 4px', textAlign: 'center', fontWeight: '600', color: '#2E7D32' }}>
+                                {añoSel || '-'}
+                              </td>
+                            );
+                          })}
+                          <td style={{ padding: '8px', textAlign: 'center', fontWeight: '700', color: '#2E7D32' }}>
+                            {(() => {
+                              let total = 0;
+                              seleccionMeses.forEach((año, idx) => {
+                                if (año && resumenMeses[idx]) {
+                                  const opcion = resumenMeses[idx].opciones.find(o => o.año === año);
+                                  if (opcion) total += opcion.consumoTotal;
+                                }
+                              });
+                              return total > 0 ? `${(total / 1000).toFixed(0)}k` : '-';
+                            })()}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })()}
               
-              {/* Resumen rápido de selección */}
-              {tieneMultiplesAnos && (
-              <div style={{ marginTop: '12px', padding: '10px', backgroundColor: 'white', borderRadius: '8px', fontSize: '11px' }}>
-                <strong style={{ color: '#1565C0' }}>Resumen de selección:</strong>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '6px' }}>
-                  {estadisticas.añosDisponibles?.map(año => {
-                    const mesesDeEsteAño = seleccionMeses.filter(s => s === año).length;
-                    return (
-                      <span key={año} style={{ 
-                        padding: '3px 8px', 
-                        backgroundColor: mesesDeEsteAño > 0 ? '#E8F5E9' : '#FFEBEE', 
-                        borderRadius: '4px',
-                        color: mesesDeEsteAño > 0 ? '#2E7D32' : '#C62828'
-                      }}>
-                        {año}: {mesesDeEsteAño} meses
-                      </span>
-                    );
-                  })}
-                </div>
+              {/* Leyenda */}
+              <div style={{ marginTop: '12px', display: 'flex', gap: '16px', fontSize: '10px', color: COLOR_TEXT_LIGHT }}>
+                <span><span style={{ display: 'inline-block', width: '12px', height: '12px', backgroundColor: '#C8E6C9', border: '2px solid #4CAF50', borderRadius: '2px', marginRight: '4px', verticalAlign: 'middle' }}></span> Seleccionado</span>
+                <span><span style={{ display: 'inline-block', width: '12px', height: '12px', backgroundColor: '#F5F5F5', border: '1px solid #E0E0E0', borderRadius: '2px', marginRight: '4px', verticalAlign: 'middle' }}></span> Disponible</span>
+                <span><span style={{ display: 'inline-block', width: '12px', height: '12px', backgroundColor: '#FFEBEE', border: '1px solid #FFCDD2', borderRadius: '2px', marginRight: '4px', verticalAlign: 'middle' }}></span> Sin datos</span>
               </div>
-              )}
             </div>
           )}
 
@@ -2120,11 +1805,68 @@ const ValidadorConsumos = ({ archivo, datosOriginales, errores, estadisticas, re
             
             {/* Log de cambios */}
             <div style={{ backgroundColor: COLOR_BG_SECONDARY, borderRadius: '12px', padding: '16px' }}>
-              <h3 style={{ margin: '0 0 12px 0', fontSize: '13px', color: COLOR_TEXT }}>📋 Log de Cambios {logCambios.length > 0 && `(${logCambios.length})`}</h3>
+              <h3 style={{ margin: '0 0 12px 0', fontSize: '13px', color: COLOR_TEXT }}>📋 Log de Transformaciones {logCambios.length > 0 && `(${logCambios.length})`}</h3>
               {logCambios.length === 0 ? <p style={{ color: COLOR_TEXT_LIGHT, fontSize: '12px', textAlign: 'center', padding: '20px' }}>Aplica las transformaciones para ver los cambios</p> : (
-                <div style={{ maxHeight: '180px', overflow: 'auto' }}>
-                  {logCambios.filter(c => c.tipo !== 'resumen_construccion').slice(0, 12).map((cambio, i) => <div key={i} style={{ padding: '6px', borderBottom: '1px solid #E5E5E5', fontSize: '10px' }}><span style={{ display: 'inline-block', padding: '2px 5px', backgroundColor: '#E5E5E5', borderRadius: '3px', marginRight: '6px' }}>{cambio.tipo}</span><span>{cambio.fecha} {cambio.hora !== '-' && `${cambio.hora}:00`}</span> <span style={{ color: COLOR_DANGER }}>{cambio.valorOriginal}</span>→<span style={{ color: COLOR_SUCCESS }}>{cambio.valorCorregido}</span></div>)}
-                  {logCambios.length > 12 && <p style={{ textAlign: 'center', color: COLOR_TEXT_LIGHT, margin: '6px 0 0 0', fontSize: '10px' }}>... y {logCambios.length - 12} más</p>}
+                <div>
+                  {/* Resumen de transformaciones por tipo */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', marginBottom: '12px' }}>
+                    {(() => {
+                      const conteo = {};
+                      logCambios.forEach(c => {
+                        const tipo = c.metodo || c.tipo;
+                        if (!conteo[tipo]) conteo[tipo] = 0;
+                        conteo[tipo]++;
+                      });
+                      const tipoLabels = {
+                        'duplicado': '🔄 Duplicados',
+                        'promedio': '🔄 Promediados',
+                        'primero': '🔄 Primer valor',
+                        'hueco': '🕳️ Huecos',
+                        'interpolar': '📈 Interpolados',
+                        'anterior': '⬅️ Valor anterior',
+                        'media': '📊 Media general',
+                        'cero': '0️⃣ Puestos a cero',
+                        'negativo': '➖ Negativos',
+                        'outlier': '📍 Outliers',
+                        'construccion': '🏗️ Construcción año'
+                      };
+                      return Object.entries(conteo).map(([tipo, cantidad]) => (
+                        <div key={tipo} style={{ padding: '6px 10px', backgroundColor: 'white', borderRadius: '6px', fontSize: '11px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ color: COLOR_TEXT_LIGHT }}>{tipoLabels[tipo] || tipo}</span>
+                          <strong style={{ color: COLOR_CORP }}>{cantidad}</strong>
+                        </div>
+                      ));
+                    })()}
+                  </div>
+                  
+                  {/* Detalle de cambios */}
+                  <div style={{ maxHeight: '150px', overflow: 'auto', backgroundColor: 'white', borderRadius: '6px', padding: '8px' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid #E0E0E0' }}>
+                          <th style={{ padding: '4px', textAlign: 'left', color: COLOR_TEXT_LIGHT }}>Tipo</th>
+                          <th style={{ padding: '4px', textAlign: 'left', color: COLOR_TEXT_LIGHT }}>Fecha/Hora</th>
+                          <th style={{ padding: '4px', textAlign: 'right', color: COLOR_TEXT_LIGHT }}>Original</th>
+                          <th style={{ padding: '4px', textAlign: 'center', color: COLOR_TEXT_LIGHT }}></th>
+                          <th style={{ padding: '4px', textAlign: 'right', color: COLOR_TEXT_LIGHT }}>Corregido</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {logCambios.filter(c => c.tipo !== 'resumen_construccion').slice(0, 20).map((cambio, i) => (
+                          <tr key={i} style={{ borderBottom: '1px solid #F5F5F5' }}>
+                            <td style={{ padding: '4px' }}>
+                              <span style={{ padding: '2px 5px', backgroundColor: '#E5E5E5', borderRadius: '3px', fontSize: '9px' }}>{cambio.metodo || cambio.tipo}</span>
+                            </td>
+                            <td style={{ padding: '4px', color: COLOR_TEXT }}>{cambio.fecha} {cambio.hora !== '-' && `${cambio.hora}:00`}</td>
+                            <td style={{ padding: '4px', textAlign: 'right', color: COLOR_DANGER }}>{cambio.valorOriginal}</td>
+                            <td style={{ padding: '4px', textAlign: 'center', color: COLOR_TEXT_LIGHT }}>→</td>
+                            <td style={{ padding: '4px', textAlign: 'right', color: COLOR_SUCCESS, fontWeight: '600' }}>{cambio.valorCorregido}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {logCambios.length > 20 && <p style={{ textAlign: 'center', color: COLOR_TEXT_LIGHT, margin: '8px 0 0 0', fontSize: '10px' }}>... y {logCambios.length - 20} transformaciones más</p>}
+                  </div>
                 </div>
               )}
             </div>
@@ -2223,40 +1965,14 @@ const ValidadorConsumos = ({ archivo, datosOriginales, errores, estadisticas, re
               const cabecera = 'fecha;hora;demanda\n';
               const filas = datosParaExportar.map(d => {
                 const fecha = formatearFecha(d.fechaOriginal || d.fecha);
-                return `${fecha};${d.hora};${d.consumo.toFixed(4)}`;
+                // Usar coma decimal para Excel español
+                return `${fecha};${d.hora};${d.consumo.toFixed(4).replace('.', ',')}`;
               }).join('\n');
               const blob = new Blob([cabecera + filas], { type: 'text/csv;charset=utf-8;' });
               const url = URL.createObjectURL(blob);
               const link = document.createElement('a');
               link.href = url;
               link.download = 'curva_carga_final.csv';
-              document.body.appendChild(link);
-              link.click();
-              document.body.removeChild(link);
-              URL.revokeObjectURL(url);
-            };
-            
-            const descargarExcel = () => {
-              // Crear XML de Excel (formato compatible sin necesidad de librería externa)
-              const xmlHeader = '<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?>';
-              const workbookStart = '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">';
-              const workbookEnd = '</Workbook>';
-              const worksheetStart = '<Worksheet ss:Name="Consumos"><Table>';
-              const worksheetEnd = '</Table></Worksheet>';
-              
-              let rows = '<Row><Cell><Data ss:Type="String">fecha</Data></Cell><Cell><Data ss:Type="String">hora</Data></Cell><Cell><Data ss:Type="String">demanda</Data></Cell></Row>';
-              
-              datosParaExportar.forEach(d => {
-                const fecha = formatearFecha(d.fechaOriginal || d.fecha);
-                rows += `<Row><Cell><Data ss:Type="String">${fecha}</Data></Cell><Cell><Data ss:Type="Number">${d.hora}</Data></Cell><Cell><Data ss:Type="Number">${d.consumo.toFixed(4)}</Data></Cell></Row>`;
-              });
-              
-              const xmlContent = xmlHeader + workbookStart + worksheetStart + rows + worksheetEnd + workbookEnd;
-              const blob = new Blob([xmlContent], { type: 'application/vnd.ms-excel' });
-              const url = URL.createObjectURL(blob);
-              const link = document.createElement('a');
-              link.href = url;
-              link.download = 'curva_carga_final.xls';
               document.body.appendChild(link);
               link.click();
               document.body.removeChild(link);
@@ -2280,7 +1996,6 @@ const ValidadorConsumos = ({ archivo, datosOriginales, errores, estadisticas, re
                   <h3 style={{ margin: 0, fontSize: '15px', color: tieneAdvertencia ? '#E65100' : COLOR_SUCCESS }}>{tieneAdvertencia ? '⚠️ Curva de Carga Parcial' : '✅ Curva de Carga Final'}</h3>
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <button onClick={descargarCSV} style={{ padding: '8px 16px', backgroundColor: '#17A2B8', color: 'white', border: 'none', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: '600' }}>📄 Descargar CSV</button>
-                    <button onClick={descargarExcel} style={{ padding: '8px 16px', backgroundColor: '#28A745', color: 'white', border: 'none', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: '600' }}>📊 Descargar Excel</button>
                   </div>
                 </div>
                 
@@ -3072,7 +2787,7 @@ const ResumenProduccionGuardado = ({ produccion, estadisticas, onCambiarArchivo 
 };
 
 // Componente para mostrar resumen de consumo guardado
-const ResumenConsumoGuardado = ({ consumos, estadisticas, onCambiarArchivo }) => {
+const ResumenConsumoGuardado = ({ consumos, estadisticas, onCambiarArchivo, onEditarAnalisis }) => {
   const [vistaGrafico, setVistaGrafico] = useState('horas');
   
   if (!consumos || consumos.length === 0) return null;
@@ -3143,7 +2858,8 @@ const ResumenConsumoGuardado = ({ consumos, estadisticas, onCambiarArchivo }) =>
     const cabecera = 'fecha;hora;demanda\n';
     const filas = datosParaExportar.map(d => {
       const fecha = formatearFecha(d.fechaOriginal || d.fecha);
-      return `${fecha};${d.hora};${d.consumo.toFixed(4)}`;
+      // Usar coma decimal para Excel español
+      return `${fecha};${d.hora};${d.consumo.toFixed(4).replace('.', ',')}`;
     }).join('\n');
     const blob = new Blob([cabecera + filas], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -3156,44 +2872,16 @@ const ResumenConsumoGuardado = ({ consumos, estadisticas, onCambiarArchivo }) =>
     URL.revokeObjectURL(url);
   };
   
-  // Función para descargar Excel (formato XML compatible)
-  const descargarExcel = () => {
-    // Crear XML de Excel (formato compatible sin necesidad de librería externa)
-    const xmlHeader = '<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?>';
-    const workbookStart = '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">';
-    const workbookEnd = '</Workbook>';
-    const worksheetStart = '<Worksheet ss:Name="Consumos"><Table>';
-    const worksheetEnd = '</Table></Worksheet>';
-    
-    // Cabecera
-    let rows = '<Row><Cell><Data ss:Type="String">fecha</Data></Cell><Cell><Data ss:Type="String">hora</Data></Cell><Cell><Data ss:Type="String">demanda</Data></Cell></Row>';
-    
-    // Datos
-    datosParaExportar.forEach(d => {
-      const fecha = formatearFecha(d.fechaOriginal || d.fecha);
-      rows += `<Row><Cell><Data ss:Type="String">${fecha}</Data></Cell><Cell><Data ss:Type="Number">${d.hora}</Data></Cell><Cell><Data ss:Type="Number">${d.consumo.toFixed(4)}</Data></Cell></Row>`;
-    });
-    
-    const xmlContent = xmlHeader + workbookStart + worksheetStart + rows + worksheetEnd + workbookEnd;
-    const blob = new Blob([xmlContent], { type: 'application/vnd.ms-excel' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'curva_carga.xls';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
-  
   return (
     <div style={{ marginTop: '20px', backgroundColor: '#E8F5E9', border: '1px solid #A5D6A7', borderRadius: '12px', padding: '20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-        <h3 style={{ margin: 0, fontSize: '15px', color: COLOR_SUCCESS }}>📊 Curva de Consumo Cargada</h3>
+        <h3 style={{ margin: 0, fontSize: '15px', color: COLOR_SUCCESS }}>📊 Curva de Consumo Procesada</h3>
         <div style={{ display: 'flex', gap: '8px' }}>
           <button onClick={descargarCSV} style={{ padding: '6px 12px', backgroundColor: '#17A2B8', color: 'white', border: 'none', borderRadius: '6px', fontSize: '11px', cursor: 'pointer' }}>📄 CSV</button>
-          <button onClick={descargarExcel} style={{ padding: '6px 12px', backgroundColor: '#28A745', color: 'white', border: 'none', borderRadius: '6px', fontSize: '11px', cursor: 'pointer' }}>📊 Excel</button>
-          <button onClick={onCambiarArchivo} style={{ padding: '6px 12px', backgroundColor: COLOR_WARNING, color: 'white', border: 'none', borderRadius: '6px', fontSize: '11px', cursor: 'pointer' }}>🔄 Cambiar</button>
+          {onEditarAnalisis && (
+            <button onClick={onEditarAnalisis} style={{ padding: '6px 12px', backgroundColor: COLOR_CORP, color: 'white', border: 'none', borderRadius: '6px', fontSize: '11px', cursor: 'pointer' }}>✏️ Editar</button>
+          )}
+          <button onClick={onCambiarArchivo} style={{ padding: '6px 12px', backgroundColor: COLOR_WARNING, color: 'white', border: 'none', borderRadius: '6px', fontSize: '11px', cursor: 'pointer' }}>🔄 Cambiar archivo</button>
         </div>
       </div>
       
@@ -4240,6 +3928,16 @@ const Paso1Proyecto = ({ datos, onChange }) => {
         console.log('Validación completada:', estadisticas);
         console.log('Resumen meses:', resumenMeses?.length, 'meses detectados');
         
+        // Guardar los datos BRUTOS inmediatamente (nuevo archivo = nuevos brutos)
+        onChange({
+          ...datos,
+          archivo_consumo: file.name,
+          consumos_horarios_bruto: datosParseados, // Datos brutos originales
+          // Limpiar datos procesados anteriores (se regenerarán al aceptar)
+          consumos_horarios: null,
+          consumos_estadisticas: null
+        });
+        
         setDatosConsumoTemp(datosParseados);
         setErroresConsumo(errores);
         setEstadisticasConsumo(estadisticas);
@@ -4269,16 +3967,23 @@ const Paso1Proyecto = ({ datos, onChange }) => {
     const fechaFin = datosOrdenados[datosOrdenados.length - 1]?.fechaOriginal || datosOrdenados[datosOrdenados.length - 1]?.fecha;
     const consumoTotal = datosOrdenados.reduce((s, d) => s + d.consumo, 0);
     
+    // Guardar datos brutos si no existen ya (solo la primera vez que se carga el archivo)
+    const datosBrutos = datos.consumos_horarios_bruto || datosConsumoTemp;
+    
     onChange({
       ...datos,
       archivo_consumo: archivoConsumoTemp,
+      // Datos brutos originales (para la base de datos "consumos_horarios_bruto")
+      consumos_horarios_bruto: datosBrutos,
+      // Datos procesados/transformados (para la base de datos "oferta_consumos")
       consumos_horarios: datosOrdenados,
       consumos_estadisticas: {
         totalRegistros: datosOrdenados.length,
         consumoTotal: consumoTotal.toFixed(2),
         consumoMedia: (consumoTotal / datosOrdenados.length).toFixed(4),
         fechaInicio,
-        fechaFin
+        fechaFin,
+        registrosBrutos: datosBrutos.length
       }
     });
     setMostrarValidador(false);
@@ -4324,15 +4029,27 @@ const Paso1Proyecto = ({ datos, onChange }) => {
     </div>
   );
 
-  const FileUploadBox = ({ label, descripcion, archivo, onUpload, accept, tipo, estadisticas, onDownload }) => (
+  const FileUploadBox = ({ label, descripcion, archivo, onUpload, accept, tipo, estadisticas, onDownload, onVerDatos, tieneDatos }) => (
     <div style={{ border: `2px dashed ${archivo ? COLOR_SUCCESS : '#DEE2E6'}`, borderRadius: '10px', padding: '20px', textAlign: 'center', backgroundColor: archivo ? `${COLOR_SUCCESS}10` : COLOR_BG_SECONDARY, transition: 'all 0.3s' }}>
       <input type="file" accept={accept} onChange={onUpload} style={{ display: 'none' }} id={`file-${tipo}`} />
-      <label htmlFor={`file-${tipo}`} style={{ cursor: 'pointer', display: 'block' }}>
-        <span style={{ fontSize: '32px', display: 'block', marginBottom: '10px' }}>{archivo ? '✅' : '📁'}</span>
-        <span style={{ fontSize: '14px', fontWeight: '600', color: archivo ? COLOR_SUCCESS : COLOR_TEXT, display: 'block', marginBottom: '4px' }}>{archivo || label}</span>
-        <span style={{ fontSize: '12px', color: COLOR_TEXT_LIGHT }}>{archivo ? 'Click para cambiar archivo' : descripcion}</span>
-      </label>
-      {archivo && onDownload && (
+      {/* Si tiene datos guardados, al hacer clic entra a ver el análisis */}
+      {tieneDatos ? (
+        <div 
+          onClick={onVerDatos}
+          style={{ cursor: 'pointer' }}
+        >
+          <span style={{ fontSize: '32px', display: 'block', marginBottom: '10px' }}>✅</span>
+          <span style={{ fontSize: '14px', fontWeight: '600', color: COLOR_SUCCESS, display: 'block', marginBottom: '4px' }}>{archivo || 'Datos cargados'}</span>
+          <span style={{ fontSize: '12px', color: COLOR_TEXT_LIGHT }}>Click para ver análisis</span>
+        </div>
+      ) : (
+        <label htmlFor={`file-${tipo}`} style={{ cursor: 'pointer', display: 'block' }}>
+          <span style={{ fontSize: '32px', display: 'block', marginBottom: '10px' }}>{archivo ? '✅' : '📁'}</span>
+          <span style={{ fontSize: '14px', fontWeight: '600', color: archivo ? COLOR_SUCCESS : COLOR_TEXT, display: 'block', marginBottom: '4px' }}>{archivo || label}</span>
+          <span style={{ fontSize: '12px', color: COLOR_TEXT_LIGHT }}>{archivo ? 'Click para cambiar archivo' : descripcion}</span>
+        </label>
+      )}
+      {archivo && onDownload && !tieneDatos && (
         <button
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDownload(); }}
           style={{
@@ -4362,9 +4079,37 @@ const Paso1Proyecto = ({ datos, onChange }) => {
 
   const ResumenSIPS = () => {
     if (!datos.archivo_sips) return null;
+    
+    // Función para descargar SIPS como CSV
+    const descargarSIPScsv = () => {
+      if (!archivoSIPSBlob) return;
+      const url = URL.createObjectURL(archivoSIPSBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = datos.archivo_sips.replace(/\.[^.]+$/, '.csv') || 'sips.csv';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    };
+    
+    // Función para cambiar archivo SIPS
+    const cambiarArchivoSIPS = () => {
+      document.getElementById('file-sips').click();
+    };
+    
     return (
       <div style={{ backgroundColor: '#E8F5E9', border: '1px solid #A5D6A7', borderRadius: '8px', padding: '12px 16px', marginTop: '12px', fontSize: '12px' }}>
-        <div style={{ fontWeight: '600', color: '#2E7D32', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>✅ Datos cargados desde SIPS</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+          <div style={{ fontWeight: '600', color: '#2E7D32', display: 'flex', alignItems: 'center', gap: '6px' }}>✅ Datos cargados desde SIPS</div>
+          <div style={{ display: 'flex', gap: '6px' }}>
+            {archivoSIPSBlob && (
+              <button onClick={descargarSIPScsv} style={{ padding: '4px 10px', backgroundColor: '#17A2B8', color: 'white', border: 'none', borderRadius: '4px', fontSize: '10px', cursor: 'pointer' }}>📄 CSV</button>
+            )}
+            <button onClick={cambiarArchivoSIPS} style={{ padding: '4px 10px', backgroundColor: COLOR_WARNING, color: 'white', border: 'none', borderRadius: '4px', fontSize: '10px', cursor: 'pointer' }}>🔄 Cambiar</button>
+          </div>
+        </div>
+        <div style={{ fontSize: '11px', color: '#558B2F', marginBottom: '8px' }}>📁 {datos.archivo_sips}</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', color: '#1B5E20' }}>
           <span>CP: {datos.ubicacion_cp || '-'}</span>
           <span>Municipio: {datos.ubicacion_municipio || '-'}</span>
@@ -4389,6 +4134,9 @@ const Paso1Proyecto = ({ datos, onChange }) => {
     <div style={{ maxWidth: '900px' }}>
       <h2 style={{ margin: '0 0 8px 0', color: COLOR_TEXT, fontSize: '22px' }}>📋 Datos del Proyecto</h2>
       <p style={{ margin: '0 0 20px 0', color: COLOR_TEXT_LIGHT, fontSize: '14px' }}>Información del proyecto, cliente y ubicación de la instalación</p>
+
+      {/* Input oculto para cambiar archivo de consumo cuando hay datos guardados */}
+      <input type="file" accept=".csv,.xlsx,.xls" onChange={handleConsumoUpload} style={{ display: 'none' }} id="file-consumo-hidden" />
 
       <SectionTitle>Carga de Archivos</SectionTitle>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
@@ -4420,57 +4168,141 @@ const Paso1Proyecto = ({ datos, onChange }) => {
             </select>
           </div>
           
-          {/* Archivo de consumo - DESPUÉS */}
-          <FileUploadBox label="Archivo de Consumo" descripcion="Curva de consumo horario (.csv, .xlsx)" archivo={datos.archivo_consumo} onUpload={handleConsumoUpload} accept=".csv,.xlsx,.xls" tipo="consumo" estadisticas={datos.consumos_estadisticas} onDownload={archivoConsumoBlob ? descargarArchivoConsumo : null} />
-          <button 
-            onClick={() => {
-              // Generar plantilla CSV con formato español DD/MM/YYYY
-              const diasPorMes = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-              let csv = 'fecha;hora;consumo\n';
-              for (let mes = 0; mes < 12; mes++) {
-                for (let dia = 1; dia <= diasPorMes[mes]; dia++) {
-                  for (let hora = 0; hora < 24; hora++) {
-                    const fecha = `${String(dia).padStart(2, '0')}/${String(mes + 1).padStart(2, '0')}/2024`;
-                    csv += `${fecha};${hora};\n`;
+          {/* Archivo de consumo - Solo mostrar FileUploadBox si NO hay datos (ni brutos ni procesados) */}
+          {(!datos.consumos_horarios_bruto || datos.consumos_horarios_bruto.length === 0) && (!datos.consumos_horarios || datos.consumos_horarios.length === 0) ? (
+            <>
+              <FileUploadBox 
+                label="Archivo de Consumo" 
+                descripcion="Curva de consumo horario (.csv, .xlsx)" 
+                archivo={datos.archivo_consumo} 
+                onUpload={handleConsumoUpload} 
+                accept=".csv,.xlsx,.xls" 
+                tipo="consumo" 
+                estadisticas={datos.consumos_estadisticas} 
+                onDownload={archivoConsumoBlob ? descargarArchivoConsumo : null} 
+              />
+              <button 
+                onClick={() => {
+                  // Generar plantilla CSV con formato español DD/MM/YYYY
+                  const diasPorMes = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+                  let csv = 'fecha;hora;consumo\n';
+                  for (let mes = 0; mes < 12; mes++) {
+                    for (let dia = 1; dia <= diasPorMes[mes]; dia++) {
+                      for (let hora = 0; hora < 24; hora++) {
+                        const fecha = `${String(dia).padStart(2, '0')}/${String(mes + 1).padStart(2, '0')}/2024`;
+                        csv += `${fecha};${hora};\n`;
+                      }
+                    }
                   }
-                }
-              }
-              const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-              const url = URL.createObjectURL(blob);
-              const link = document.createElement('a');
-              link.href = url;
-              link.download = 'Plantilla_Consumo_YLIO.csv';
-              document.body.appendChild(link);
-              link.click();
-              document.body.removeChild(link);
-              URL.revokeObjectURL(url);
-            }}
-            style={{ 
-              marginTop: '8px', 
-              padding: '6px 12px', 
-              fontSize: '11px', 
-              color: COLOR_CORP, 
-              backgroundColor: 'white', 
-              border: `1px solid ${COLOR_CORP}`, 
-              borderRadius: '6px', 
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-          >
-            📥 Descargar plantilla CSV (8760 horas)
-          </button>
+                  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = 'Plantilla_Consumo_YLIO.csv';
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                  URL.revokeObjectURL(url);
+                }}
+                style={{ 
+                  marginTop: '8px', 
+                  padding: '6px 12px', 
+                  fontSize: '11px', 
+                  color: COLOR_CORP, 
+                  backgroundColor: 'white', 
+                  border: `1px solid ${COLOR_CORP}`, 
+                  borderRadius: '6px', 
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                📥 Descargar plantilla CSV (8760 horas)
+              </button>
+            </>
+          ) : (
+            /* Si hay datos guardados, mostrar resumen compacto */
+            <div 
+              style={{ 
+                border: `2px solid ${datos.consumos_horarios?.length > 0 ? COLOR_SUCCESS : '#FF9800'}`, 
+                borderRadius: '10px', 
+                padding: '16px', 
+                backgroundColor: datos.consumos_horarios?.length > 0 ? '#E8F5E9' : '#FFF8E1',
+                cursor: 'pointer'
+              }}
+              onClick={() => {
+                // SIEMPRE cargar los datos BRUTOS para poder re-seleccionar años y re-transformar
+                const datosBrutos = datos.consumos_horarios_bruto || datos.consumos_horarios;
+                
+                setDatosConsumoTemp(datosBrutos);
+                setArchivoConsumoTemp(datos.archivo_consumo || 'Datos guardados');
+                
+                // Regenerar resumen de meses y errores desde los datos BRUTOS
+                const { errores, estadisticas, resumenMeses, analisis } = validarDatosConsumo(datosBrutos);
+                setErroresConsumo(errores);
+                setEstadisticasConsumo(estadisticas);
+                setResumenMesesConsumo(resumenMeses);
+                setAnalisisConsumo(analisis);
+                
+                // Abrir el validador
+                setMostrarValidador(true);
+                // Scroll al validador
+                setTimeout(() => {
+                  const elemento = document.getElementById('validador-consumo');
+                  if (elemento) elemento.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ fontSize: '28px' }}>{datos.consumos_horarios?.length > 0 ? '✅' : '⏳'}</span>
+                  <div>
+                    <div style={{ fontSize: '14px', fontWeight: '600', color: datos.consumos_horarios?.length > 0 ? COLOR_SUCCESS : '#E65100' }}>
+                      {datos.archivo_consumo || 'Curva de consumo cargada'}
+                    </div>
+                    <div style={{ fontSize: '11px', color: datos.consumos_horarios?.length > 0 ? '#558B2F' : '#795548' }}>
+                      <span style={{ marginRight: '10px' }}>📁 Brutos: {(datos.consumos_horarios_bruto?.length || 0).toLocaleString()}</span>
+                      {datos.consumos_horarios?.length > 0 ? (
+                        <span>✅ Procesados: {datos.consumos_horarios.length.toLocaleString()} ({datos.consumos_estadisticas?.consumoTotal ? parseFloat(datos.consumos_estadisticas.consumoTotal).toLocaleString() : '0'} kWh)</span>
+                      ) : (
+                        <span style={{ color: '#E65100' }}>⚠️ Pendiente de procesar</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <span style={{ fontSize: '12px', color: datos.consumos_horarios?.length > 0 ? COLOR_SUCCESS : '#E65100' }}>📊 Ver/Editar análisis →</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
       
       {/* Resumen de Consumo Guardado */}
       {datos.consumos_horarios && datos.consumos_horarios.length > 0 && (
-        <ResumenConsumoGuardado 
-          consumos={datos.consumos_horarios} 
-          estadisticas={datos.consumos_estadisticas}
-          onCambiarArchivo={() => document.getElementById('file-consumo').click()}
-        />
+        <div id="resumen-consumo-guardado">
+          <ResumenConsumoGuardado 
+            consumos={datos.consumos_horarios} 
+            estadisticas={datos.consumos_estadisticas}
+            onCambiarArchivo={() => document.getElementById('file-consumo-hidden').click()}
+            onEditarAnalisis={() => {
+              // Cargar datos BRUTOS y abrir el validador
+              const datosBrutos = datos.consumos_horarios_bruto || datos.consumos_horarios;
+              setDatosConsumoTemp(datosBrutos);
+              setArchivoConsumoTemp(datos.archivo_consumo || 'Datos guardados');
+              const { errores, estadisticas, resumenMeses, analisis } = validarDatosConsumo(datosBrutos);
+              setErroresConsumo(errores);
+              setEstadisticasConsumo(estadisticas);
+              setResumenMesesConsumo(resumenMeses);
+              setAnalisisConsumo(analisis);
+              setMostrarValidador(true);
+              setTimeout(() => {
+                const elemento = document.getElementById('validador-consumo');
+                if (elemento) elemento.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }, 100);
+            }}
+          />
+        </div>
       )}
       
       <ResumenSIPS />
@@ -4526,18 +4358,20 @@ const Paso1Proyecto = ({ datos, onChange }) => {
 
       {/* Modal del Validador de Consumos */}
       {mostrarValidador && (
-        <ValidadorConsumos
-          archivo={archivoConsumoTemp}
-          datosOriginales={datosConsumoTemp}
-          errores={erroresConsumo}
-          estadisticas={estadisticasConsumo}
-          resumenMeses={resumenMesesConsumo}
-          analisis={analisisConsumo}
-          formatoDetectado={formatoDetectado}
-          onAceptar={handleAceptarConsumo}
-          onCancelar={() => setMostrarValidador(false)}
-          onCorregir={handleCorregirConsumo}
-        />
+        <div id="validador-consumo">
+          <ValidadorConsumos
+            archivo={archivoConsumoTemp}
+            datosOriginales={datosConsumoTemp}
+            errores={erroresConsumo}
+            estadisticas={estadisticasConsumo}
+            resumenMeses={resumenMesesConsumo}
+            analisis={analisisConsumo}
+            formatoDetectado={formatoDetectado}
+            onAceptar={handleAceptarConsumo}
+            onCancelar={() => setMostrarValidador(false)}
+            onCorregir={handleCorregirConsumo}
+          />
+        </div>
       )}
     </div>
   );
@@ -7797,39 +7631,6 @@ export default function YlioApp() {
   // Estado de oportunidades guardadas
   const [oportunidadesGuardadas, setOportunidadesGuardadas] = useState([]);
   
-  // Estado de carga desde Supabase
-  const [cargandoSupabase, setCargandoSupabase] = useState(true);
-  const [errorSupabase, setErrorSupabase] = useState(null);
-  
-  // Cargar ofertas de Supabase al iniciar
-  useEffect(() => {
-    const cargarDesdeSupabase = async () => {
-      setCargandoSupabase(true);
-      try {
-        const ofertas = await cargarOfertasSupabase();
-        if (ofertas && ofertas.length > 0) {
-          // Convertir ofertas de BD a formato app
-          const ofertasApp = ofertas.map(o => ({
-            id_oferta: o.oferta_id,
-            denominacion_oferta: o.oferta_denominacion || '',
-            cliente_denominacion: o.cliente_denominacion || '',
-            ubicacion_municipio: o.proyecto_municipio || '',
-            ultimaModificacion: o.fecha_modificacion || o.fecha_creacion,
-          }));
-          setOportunidadesGuardadas(ofertasApp);
-          console.log('✅ Ofertas cargadas de Supabase:', ofertas.length);
-        }
-      } catch (err) {
-        console.error('Error cargando de Supabase:', err);
-        setErrorSupabase('No se pudieron cargar las ofertas de la base de datos');
-      } finally {
-        setCargandoSupabase(false);
-      }
-    };
-    
-    cargarDesdeSupabase();
-  }, []);
-  
   // Estado para mostrar notificación de autoguardado
   const [mostrarAutoguardado, setMostrarAutoguardado] = useState(false);
   const [ultimoGuardado, setUltimoGuardado] = useState(null);
@@ -8096,30 +7897,19 @@ export default function YlioApp() {
     localStorage.removeItem('ylio_pantalla');
   };
 
-  // Generar nuevo ID de oferta (formato local, luego se sincroniza con Supabase)
+  // Generar nuevo ID de oferta
   const generarNuevoId = () => {
-    // Formato 10xxx como define la BD
-    const maxLocal = oportunidadesGuardadas.reduce((max, o) => {
-      const num = parseInt(o.id_oferta?.substring(2)) || 0;
-      return Math.max(max, num);
-    }, 0);
-    return '10' + String(maxLocal + 1).padStart(3, '0');
+    const año = new Date().getFullYear();
+    const num = String(Math.floor(Math.random() * 999) + 1).padStart(3, '0');
+    return `OFE_${año}_${num}`;
   };
 
-  // Manejar selección de módulo en inicio (ahora async para obtener ID de Supabase)
-  const handleSeleccionarModulo = async (moduloId) => {
+  // Manejar selección de módulo en inicio
+  const handleSeleccionarModulo = (moduloId) => {
     if (moduloId === 'ofertas') {
       // Ir a la pantalla de proyectos
       setPantalla('ofertas');
     } else if (moduloId === 'nueva_oportunidad') {
-      // Obtener siguiente ID desde Supabase (o local como fallback)
-      let nuevoId = generarNuevoId();
-      try {
-        nuevoId = await obtenerSiguienteIdOferta();
-      } catch (e) {
-        console.warn('Usando ID local:', nuevoId);
-      }
-      
       // Reiniciar datos y entrar al wizard
       setDatosOportunidad({
         // Archivos
@@ -8130,7 +7920,7 @@ export default function YlioApp() {
         estado_oferta: 'oferta',
         fecha_creacion: new Date().toISOString(),
         // Identificación del Proyecto
-        id_oferta: nuevoId,
+        id_oferta: generarNuevoId(),
         denominacion_oferta: '',
         version: '1.0',
         descripcion_version: 'Versión inicial',
@@ -8255,9 +8045,9 @@ export default function YlioApp() {
     }
   };
 
-  // Guardar oportunidad (sin validaciones) - SINCRONIZA CON SUPABASE
-  const guardarOportunidad = async () => {
-    // Buscar si ya existe localmente
+  // Guardar oportunidad (sin validaciones)
+  const guardarOportunidad = () => {
+    // Buscar si ya existe
     const index = oportunidadesGuardadas.findIndex(o => o.id_oferta === datosOportunidad.id_oferta);
     
     const nuevaOportunidad = {
@@ -8275,59 +8065,11 @@ export default function YlioApp() {
       // Añadir nueva
       setOportunidadesGuardadas([...oportunidadesGuardadas, nuevaOportunidad]);
     }
-    
-    // Guardar en Supabase (async)
-    if (datosOportunidad.id_oferta) {
-      const exito = await guardarOfertaSupabase(datosOportunidad);
-      if (exito) {
-        console.log('✅ Oferta guardada en Supabase:', datosOportunidad.id_oferta);
-        // Refrescar lista de ofertas desde Supabase
-        const ofertasActualizadas = await cargarOfertasSupabase();
-        if (ofertasActualizadas && ofertasActualizadas.length > 0) {
-          const ofertasApp = ofertasActualizadas.map(o => ({
-            id_oferta: o.oferta_id,
-            denominacion_oferta: o.oferta_denominacion || '',
-            cliente_denominacion: o.cliente_denominacion || '',
-            ubicacion_municipio: o.proyecto_municipio || '',
-            ultimaModificacion: o.fecha_modificacion || o.fecha_creacion,
-          }));
-          setOportunidadesGuardadas(ofertasApp);
-        }
-      } else {
-        console.warn('⚠️ Error guardando en Supabase, datos guardados localmente');
-      }
-    }
   };
 
-  // Abrir oportunidad existente para editar - CARGA DE SUPABASE
-  const handleAbrirOportunidad = async (oportunidad) => {
-    // Cargar datos completos desde Supabase
-    const datosBD = await cargarOfertaSupabase(oportunidad.id_oferta);
-    
-    if (datosBD) {
-      // Convertir datos de BD a formato App
-      const datosApp = mapearBDToApp(datosBD);
-      
-      // Mantener campos que no están en BD
-      const datosCompletos = {
-        ...datosOportunidad, // Mantener estructura por defecto
-        ...datosApp, // Sobrescribir con datos de BD
-        // Mantener arrays si no vienen de BD
-        inversores_existentes: datosOportunidad.inversores_existentes,
-        modulos_existentes: datosOportunidad.modulos_existentes,
-        prop_inversores: datosOportunidad.prop_inversores,
-        prop_modulos: datosOportunidad.prop_modulos,
-        prop_areas_produccion: datosOportunidad.prop_areas_produccion,
-      };
-      
-      setDatosOportunidad(datosCompletos);
-      console.log('✅ Oferta cargada de Supabase:', oportunidad.id_oferta);
-    } else {
-      // Fallback: usar datos locales
-      setDatosOportunidad(oportunidad);
-      console.warn('⚠️ No se encontró en Supabase, usando datos locales');
-    }
-    
+  // Abrir oportunidad existente para editar
+  const handleAbrirOportunidad = (oportunidad) => {
+    setDatosOportunidad(oportunidad);
     setPasoActual(oportunidad.pasoActual || 1);
     setPantalla('oportunidad');
   };
@@ -8496,24 +8238,18 @@ export default function YlioApp() {
               display: 'flex', 
               alignItems: 'center', 
               gap: '8px',
-              backgroundColor: cargandoSupabase ? '#FFF3E0' : errorSupabase ? '#FFEBEE' : '#E8F5E9',
+              backgroundColor: '#E8F5E9',
               padding: '6px 12px',
               borderRadius: '20px'
             }}>
               <div style={{ 
                 width: '8px', 
                 height: '8px', 
-                backgroundColor: cargandoSupabase ? COLOR_WARNING : errorSupabase ? COLOR_DANGER : COLOR_SUCCESS, 
+                backgroundColor: COLOR_SUCCESS, 
                 borderRadius: '50%',
-                boxShadow: cargandoSupabase ? '0 0 4px #FFAC3E' : errorSupabase ? '0 0 4px #DC3545' : '0 0 4px #28A745'
+                boxShadow: '0 0 4px #28A745'
               }} />
-              <span style={{ 
-                fontSize: '12px', 
-                color: cargandoSupabase ? COLOR_WARNING : errorSupabase ? COLOR_DANGER : COLOR_SUCCESS, 
-                fontWeight: '500' 
-              }}>
-                {cargandoSupabase ? 'Conectando...' : errorSupabase ? 'Sin conexión' : 'Supabase ✓'}
-              </span>
+              <span style={{ fontSize: '12px', color: COLOR_SUCCESS, fontWeight: '500' }}>Online</span>
             </div>
           </div>
         </div>
@@ -8707,3 +8443,5 @@ export default function YlioApp() {
     </div>
   );
 }
+
+export default YlioApp;
